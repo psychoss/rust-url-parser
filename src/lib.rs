@@ -37,10 +37,10 @@ fn escape(url: String, mode: &EncodeMode) -> String {
 
     let mut t: Vec<u8> = vec![0;l as usize];
     let mut j = 0;
-    let s= "0123456789ABCDEF".to_string().into_bytes();
+    let s = "0123456789ABCDEF".to_string().into_bytes();
 
     for v in vv {
-    //println!("{} {} {:?}",v,v >> 4,t.len());
+        // println!("{} {} {:?}",v,v >> 4,t.len());
         if *v == 32 && mode == &EncodeMode::QueryComponent {
             t[j] = 43;
             j += 1;
@@ -49,7 +49,7 @@ fn escape(url: String, mode: &EncodeMode) -> String {
 
             t[j] = 37;
             t[j + 1] = s[(v >> 4) as usize];
-            t[j + 2] =s[(v & 15) as usize];
+            t[j + 2] = s[(v & 15) as usize];
             j += 3;
         } else {
             t[j] = *v;
@@ -65,17 +65,16 @@ fn escape(url: String, mode: &EncodeMode) -> String {
 /// 0-48,Z-57
 #[allow(dead_code)]
 fn is_alpha_numeric(cc: u8) -> bool {
-    if 97 <= cc && cc <= 122 {
-        return true;
+    match cc {
+        97...122 | 65...90 | 48...57 => {
+            true
+        }
+        _ => {
+            false
+        }
     }
-    if 65 <= cc && cc <= 90 {
-        return true;
-    }
-    if 48 <= cc && cc <= 57 {
-        return true;
-    }
-    false
 }
+
 
 ///[33,34,36,38,39,40,41,42,43,44,58,59,60,61,62,91,93]
 #[allow(dead_code)]
