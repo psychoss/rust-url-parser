@@ -1,3 +1,5 @@
+
+#[derive(PartialEq)]
 pub enum EncodeMode {
     Path,
     Host,
@@ -6,28 +8,56 @@ pub enum EncodeMode {
     QueryComponent,
     Fragment,
 }
+
+
 pub struct UrlParser;
 
 
 impl UrlParser {
 
 }
-fn escape(url:String,mode:EncodeMode)->String{
-    let mut spaceCount:u16=0;
-    let mut hexCount:u16=0;
-    let vv=url.into_bytes();
-    for v in vv{
-        if should_escape(v){
-            if v==32 && mode==EncodeMode::QueryComponent{
-                spaceCount +=1;
-            }eles{
-                hexCount+=1;
+fn escape(url: String, mode: &EncodeMode) -> String {
+    let mut space_count: u16 = 0;
+    let mut hex_count: u16 = 0;
+    let url_clone = url.clone();
+    let vv = &url_clone.into_bytes();
+    for v in vv {
+        if should_escape(*v, mode) {
+            if *v == 32 && mode == &EncodeMode::QueryComponent {
+                space_count += 1;
+            } else {
+                hex_count += 1;
             }
         }
     }
-    if spaceCount==0&& hexCount==0 {
+    if space_count == 0 && hex_count == 0 {
         return url;
     }
+    let l: u16 = vv.len() as u16 + 2 * hex_count;
+
+    let mut t: Vec<u8> = vec![0;l as usize];
+    let mut j = 0;
+    let s= "0123456789ABCDEF".to_string().into_bytes();
+
+    for v in vv {
+    //println!("{} {} {:?}",v,v >> 4,t.len());
+        if *v == 32 && mode == &EncodeMode::QueryComponent {
+            t[j] = 43;
+            j += 1;
+        }
+        if should_escape(*v, mode) {
+
+            t[j] = 37;
+            t[j + 1] = s[(v >> 4) as usize];
+            t[j + 2] =s[(v & 15) as usize];
+            j += 3;
+        } else {
+            t[j] = *v;
+            j += 1;
+        }
+    }
+    return String::from_utf8(t).unwrap();
+
 }
 /// Check the argument is either a letter or number
 /// a-97,z-122
@@ -49,12 +79,12 @@ fn is_alpha_numeric(cc: u8) -> bool {
 
 ///[33,34,36,38,39,40,41,42,43,44,58,59,60,61,62,91,93]
 #[allow(dead_code)]
-fn should_escape(c: u8, mode: EncodeMode) -> bool {
+fn should_escape(c: u8, mode: &EncodeMode) -> bool {
     if is_alpha_numeric(c) {
         return false;
     }
     match mode {
-        EncodeMode::Host | EncodeMode::Zone => {
+        &EncodeMode::Host | &EncodeMode::Zone => {
             let v: [u8; 17] = [33, 34, 36, 38, 39, 40, 41, 42, 43, 44, 58, 59, 60, 61, 62, 91, 93];
             if v.contains(&c) {
                 false
@@ -70,16 +100,16 @@ fn should_escape(c: u8, mode: EncodeMode) -> bool {
             let reserved: [u8; 10] = [36, 38, 43, 44, 47, 58, 59, 61, 63, 64];
             if reserved.contains(&c) {
                 let x = match mode {
-                    EncodeMode::Path => {
+                    &EncodeMode::Path => {
                         c == 63;
-                    },
-                    EncodeMode::UserPassword=>{
-                        &[47,58,63,64].contains(&c);
-                    },
-                    EncodeMode::QueryComponent => {
+                    }
+                    &EncodeMode::UserPassword => {
+                        &[47, 58, 63, 64].contains(&c);
+                    }
+                    &EncodeMode::QueryComponent => {
                         true;
-                    },
-                    _=> {
+                    }
+                    _ => {
                         false;
                     }
                 };
@@ -91,11 +121,7 @@ fn should_escape(c: u8, mode: EncodeMode) -> bool {
     }
 }
 
-#[test]
-fn it_works() {
-    assert_eq!(false, should_escape('a' as u8, EncodeMode::Path));
-    assert_eq!(true, should_escape('-' as u8, EncodeMode::Host));
-    assert_eq!(true, should_escape('<' as u8, EncodeMode::Path));
-    assert_eq!(true, should_escape('?' as u8, EncodeMode::UserPassword));
-
-}
+// fn main(){
+//
+// println!("{}",escape("我方".to_string(),&EncodeMode::Path));
+// }
