@@ -1,4 +1,4 @@
-
+use std::fmt;
 #[derive(PartialEq)]
 pub enum EncodeMode {
     Path,
@@ -14,8 +14,137 @@ pub struct UrlParser;
 
 
 impl UrlParser {
+    pub fn query_escape(url: String) -> String {
+        escape(url, &EncodeMode::QueryComponent)
+    }
+}
+
+#[allow(dead_code)]
+fn unescape(url: &str, mode: &EncodeMode) -> Result<String, String> {
+    let mut n = 0;
+    let mut m = 0;
+    let mut has_plus = false;
+    // let mut skip = true;
+    let vv = &url.as_bytes();
+
+    let l = vv.len();
+    loop {
+        if m + 1 >= l {
+            break;
+        }
+        match vv[m] {
+            37 => {
+                n += 1;
+
+                if m + 2 >= l || !is_hex(vv[m + 1]) || !is_hex(vv[m + 2]) {
+                    println!("{}{}", vv[m + 1],vv[m + 2]);
+                    return Err("".to_string());
+                }
+                m+=1;
+            }
+            _ => {
+                m += 1;
+            }
+        }
+    }
+    // for i in 0..l - 1 {
+    //     if skip {
+    //         skip = false;
+    //         continue;
+    //     }
+    //     if vv[i] == 37 {
+    //         n += 1;
+    //         if i + 2 >= l || !is_hex(vv[i + 1]) || !is_hex(vv[i + 2]) {
+    //             return Err("".to_string());
+    //         }
+    //     }
+    //     if vv[i] == 43 {
+    //         has_plus = mode == &EncodeMode::QueryComponent;
+    //         skip = true;
+    //     } else {
+    // if (mode == &EncodeMode::Host || mode == &EncodeMode::Zone) &&
+    // vv[i]< 0x80 &&
+    //            should_escape(vv[i], mode) {
+    //             return Err("".to_string());
+    //         }
+    //         skip = true;
+    //     }
+    // }
+    if n == 0 && !has_plus {
+        return Ok(url.to_string());
+    }
+    println!("{:?}", n);
+    let ll = l - 2 * n;
+
+    let mut t: Vec<u8> = vec![0;ll as usize];
+    let mut j = 0;
+
+    m = 0;
+    loop {
+
+        if m + 1 >= l {
+            break;
+        }
+
+        match vv[m] {
+            37 => {
+                t[j] = un_hex(vv[m + 1]) << 4 | un_hex(vv[m + 2]);
+                j += 1;
+                m += 3;
+            }
+            43 => {
+                if mode == &EncodeMode::QueryComponent {
+                    t[j] = 32;
+                } else {
+                    t[j] = 43;
+                }
+                j += 1;
+                m += 1;
+            }
+            _ => {
+                t[j] = vv[m];
+                j += 1;
+                m += 1;
+            }
+        }
+
+    }
+
+    Ok(String::from_utf8(t).unwrap())
 
 }
+#[allow(dead_code)]
+fn is_hex(cc: u8) -> bool {
+    match cc {
+        48...57 | 65...70 | 97...102 => {
+            true
+        },
+        _ => {
+            false
+        }
+    }
+}
+/// a-97,z-122
+/// A-65,Z-90
+/// 0-48,Z-57
+#[allow(dead_code)]
+fn un_hex(cc: u8) -> u8 {
+    match cc {
+        48...57 => {
+            cc - 48
+        }
+        65...90 => {
+            cc - 55
+        }
+        97...122 => {
+            cc - 87
+        }
+        _ => {
+            0
+        }
+    }
+}
+
 fn escape(url: String, mode: &EncodeMode) -> String {
     let mut space_count: u16 = 0;
     let mut hex_count: u16 = 0;
@@ -120,7 +249,9 @@ fn should_escape(c: u8, mode: &EncodeMode) -> bool {
     }
 }
 
-// fn main(){
-//
-// println!("{}",escape("我方".to_string(),&EncodeMode::Path));
-// }
+fn main() {
+    println!("{:?}", "我方".to_string().into_bytes());
+    println!("{}",
+             unescape(&"%E6%88%91%E6%96%B9".to_string(), &EncodeMode::Path).unwrap());
+    println!("{}", escape("我方".to_string(), &EncodeMode::Path));
+}
